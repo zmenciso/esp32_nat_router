@@ -32,6 +32,15 @@
 #include "router_globals.h"
 #include <esp_http_server.h>
 
+/* TODO:
+ *  - Modifying the web server html to have a PEAP toggle w/ peap_username
+ *  - Get the new form information 
+ *  - Modifying wifi_init to support PEAP
+ *  - Password fields not plaintext (Optional)
+ *  - HTTPS instead of HTTP (Optional)
+ *  - Profit (Yes) 
+ */
+
 #if IP_NAPT
 #include "lwip/lwip_napt.h"
 #endif
@@ -214,7 +223,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 const int CONNECTED_BIT = BIT0;
 #define JOIN_TIMEOUT_MS (2000)
 
-void wifi_init(const char* ssid, const char* passwd, const char* static_ip, const char* subnet_mask, const char* gateway_addr, const char* ap_ssid, const char* ap_passwd)
+void wifi_init(const char* ssid, const char* passwd, const char* static_ip, const char* subnet_mask, const char* gateway_addr, const char* ap_ssid, const char* ap_passwd, const char* peap_username)
 {
     ip_addr_t dnsserver;
     //tcpip_adapter_dns_info_t dnsinfo;
@@ -278,6 +287,13 @@ void wifi_init(const char* ssid, const char* passwd, const char* static_ip, cons
         ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config) );        
     }
 
+    if (strlen(peap_username) > 0) {
+        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)peap_username, strlen(peap_username)) );
+        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_username((uint8_t *)peap_username, strlen(peap_username)) );
+        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_password((uint8_t *)passwd, strlen(passwd)) );
+        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_enable(&wifi_config) );
+    }
+
     // Enable DNS (offer) for dhcp server
     dhcps_offer_t dhcps_dns_value = OFFER_DNS;
     dhcps_set_option_info(6, &dhcps_dns_value, sizeof(dhcps_dns_value));
@@ -289,7 +305,7 @@ void wifi_init(const char* ssid, const char* passwd, const char* static_ip, cons
 
 //    tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_AP, TCPIP_ADAPTER_DNS_MAIN, &dnsinfo);
 //    ESP_LOGI(TAG, "DNS IP:" IPSTR, IP2STR(&dnsinfo.ip.u_addr.ip4));
-
+    
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
         pdFALSE, pdTRUE, JOIN_TIMEOUT_MS / portTICK_PERIOD_MS);
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -309,6 +325,7 @@ char* subnet_mask = NULL;
 char* gateway_addr = NULL;
 char* ap_ssid = NULL;
 char* ap_passwd = NULL;
+char* peap_username = NULL;
 
 char* param_set_default(const char* def_val) {
     char * retval = malloc(strlen(def_val)+1);
@@ -355,8 +372,14 @@ void app_main(void)
     if (ap_passwd == NULL) {
         ap_passwd = param_set_default("");
     }
+
+    get_config_param_str("peap_username", &peap_username);
+    if (peap_username == NULL) {
+        peap_username = param_set_default("");
+    }
+
     // Setup WIFI
-    wifi_init(ssid, passwd, static_ip, subnet_mask, gateway_addr, ap_ssid, ap_passwd);
+    wifi_init(ssid, passwd, static_ip, subnet_mask, gateway_addr, ap_ssid, ap_passwd, peap_username);
 
     pthread_t t1;
     pthread_create(&t1, NULL, led_status_thread, NULL);
