@@ -106,6 +106,10 @@ setTimeout(\"location.href = '/'\",10000);\
 <td><input type='text' name='password' value='%s' placeholder='Password of existing network'/></td>\
 </tr>\
 <tr>\
+<td>PEAP Username</td>\
+<td><input type='text' name='peap_username' value='%s' placeholder='Enterprise WPA2 username'/></td>\
+</tr>\
+<tr>\
 <td></td>\
 <td><input type='submit' value='Connect' class='ok-button'/></td>\
 </tr>\

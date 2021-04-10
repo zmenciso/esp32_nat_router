@@ -118,6 +118,7 @@ void register_router(void)
 static struct {
     struct arg_str *ssid;
     struct arg_str *password;
+    struct arg_str *peap_username;
     struct arg_end *end;
 } set_sta_arg;
 
@@ -135,6 +136,7 @@ int set_sta(int argc, char **argv)
 
     preprocess_string((char*)set_sta_arg.ssid->sval[0]);
     preprocess_string((char*)set_sta_arg.password->sval[0]);
+    preprocess_string((char*)set_sta_arg.peap_username->sval[0]);
 
     err = nvs_open(PARAM_NAMESPACE, NVS_READWRITE, &nvs);
     if (err != ESP_OK) {
@@ -145,9 +147,12 @@ int set_sta(int argc, char **argv)
     if (err == ESP_OK) {
         err = nvs_set_str(nvs, "passwd", set_sta_arg.password->sval[0]);
         if (err == ESP_OK) {
-            err = nvs_commit(nvs);
-            if (err == ESP_OK) {
-                ESP_LOGI(TAG, "STA settings %s/%s stored.", set_sta_arg.ssid->sval[0], set_sta_arg.password->sval[0]);
+	    err = nvs_set_str(nvs, "peap_username", set_sta_arg.peap_username->sval[0]);
+	    if (err == ESP_OK) {
+		err = nvs_commit(nvs);
+		if (err == ESP_OK) {
+		    ESP_LOGI(TAG, "STA settings %s/%s stored.", set_sta_arg.ssid->sval[0], set_sta_arg.password->sval[0]);
+		}
             }
         }
     }
@@ -159,7 +164,8 @@ static void register_set_sta(void)
 {
     set_sta_arg.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID");
     set_sta_arg.password = arg_str1(NULL, NULL, "<passwd>", "Password");
-    set_sta_arg.end = arg_end(2);
+    set_sta_arg.peap_username = arg_str1(NULL, NULL, "<peap_username>", "PEAP Username");
+    set_sta_arg.end = arg_end(3);
 
     const esp_console_cmd_t cmd = {
         .command = "set_sta",
@@ -300,6 +306,7 @@ static int show(int argc, char **argv)
 {
     char* ssid = NULL;
     char* passwd = NULL;
+    char* peap_username = NULL;
     char* static_ip = NULL;
     char* subnet_mask = NULL;
     char* gateway_addr = NULL;
@@ -308,19 +315,21 @@ static int show(int argc, char **argv)
 
     get_config_param_str("ssid", &ssid);
     get_config_param_str("passwd", &passwd);
+    get_config_param_str("peap_username", &peap_username);
     get_config_param_str("static_ip", &static_ip);
     get_config_param_str("subnet_mask", &subnet_mask);
     get_config_param_str("gateway_addr", &gateway_addr);
     get_config_param_str("ap_ssid", &ap_ssid);
     get_config_param_str("ap_passwd", &ap_passwd);
 
-    printf("STA SSID: %s Password: %s\n", ssid != NULL?ssid:"<undef>",
-        passwd != NULL?passwd:"<undef>");
+    printf("STA SSID: %s Password: %s PEAP Username: %s\n", ssid != NULL?ssid:"<undef>",
+	passwd != NULL?passwd:"<undef>", peap_username != NULL?peap_username:"<undef>");
     printf("AP SSID: %s Password: %s\n", ap_ssid != NULL?ap_ssid:"<undef>",
         ap_passwd != NULL?ap_passwd:"<undef>");
 
     if (ssid != NULL) free (ssid);
     if (passwd != NULL) free (passwd);
+    if (peap_username != NULL) free (peap_username);
     if (static_ip != NULL) free (static_ip);
     if (subnet_mask != NULL) free (subnet_mask);
     if (gateway_addr != NULL) free (gateway_addr);

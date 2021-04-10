@@ -14,6 +14,7 @@ extern "C" {
 
 extern char* ssid;
 extern char* passwd;
+extern char* peap_username;
 extern char* static_ip;
 extern char* subnet_mask;
 extern char* gateway_addr;

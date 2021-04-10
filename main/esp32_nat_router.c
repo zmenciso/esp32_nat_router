@@ -10,6 +10,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdlib.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_console.h"
@@ -23,6 +29,9 @@
 
 #include "freertos/event_groups.h"
 #include "esp_wifi.h"
+#include "esp_wpa2.h"
+#include "esp_event.h"
+#include "esp_netif.h"
 
 #include "lwip/opt.h"
 #include "lwip/err.h"
@@ -34,11 +43,11 @@
 
 /* TODO:
  *  - Modifying the web server html to have a PEAP toggle w/ peap_username
- *  - Get the new form information 
+ *  - Get the new form information
  *  - Modifying wifi_init to support PEAP
  *  - Password fields not plaintext (Optional)
  *  - HTTPS instead of HTTP (Optional)
- *  - Profit (Yes) 
+ *  - Profit (Yes)
  */
 
 #if IP_NAPT
@@ -229,7 +238,7 @@ void wifi_init(const char* ssid, const char* passwd, const char* static_ip, cons
     //tcpip_adapter_dns_info_t dnsinfo;
 
     wifi_event_group = xEventGroupCreate();
-  
+
     esp_netif_init();
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     wifiAP = esp_netif_create_default_wifi_ap();
@@ -284,14 +293,15 @@ void wifi_init(const char* ssid, const char* passwd, const char* static_ip, cons
         ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config) );
     } else {
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP) );
-        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config) );        
+        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config) );
     }
 
     if (strlen(peap_username) > 0) {
+        printf("PEAP Username given: %s\n", peap_username);
         ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)peap_username, strlen(peap_username)) );
         ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_username((uint8_t *)peap_username, strlen(peap_username)) );
         ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_password((uint8_t *)passwd, strlen(passwd)) );
-        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_enable(&wifi_config) );
+        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_enable() );
     }
 
     // Enable DNS (offer) for dhcp server
@@ -305,7 +315,7 @@ void wifi_init(const char* ssid, const char* passwd, const char* static_ip, cons
 
 //    tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_AP, TCPIP_ADAPTER_DNS_MAIN, &dnsinfo);
 //    ESP_LOGI(TAG, "DNS IP:" IPSTR, IP2STR(&dnsinfo.ip.u_addr.ip4));
-    
+
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
         pdFALSE, pdTRUE, JOIN_TIMEOUT_MS / portTICK_PERIOD_MS);
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -314,7 +324,7 @@ void wifi_init(const char* ssid, const char* passwd, const char* static_ip, cons
         ESP_LOGI(TAG, "wifi_init_apsta finished.");
         ESP_LOGI(TAG, "connect to ap SSID: %s ", ssid);
     } else {
-        ESP_LOGI(TAG, "wifi_init_ap with default finished.");      
+        ESP_LOGI(TAG, "wifi_init_ap with default finished.");
     }
 }
 
@@ -367,14 +377,14 @@ void app_main(void)
     get_config_param_str("ap_ssid", &ap_ssid);
     if (ap_ssid == NULL) {
         ap_ssid = param_set_default("ESP32_NAT_Router");
-    }   
+    }
     get_config_param_str("ap_passwd", &ap_passwd);
     if (ap_passwd == NULL) {
         ap_passwd = param_set_default("");
     }
-
     get_config_param_str("peap_username", &peap_username);
     if (peap_username == NULL) {
+	printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA!\n");
         peap_username = param_set_default("");
     }
 
@@ -423,7 +433,7 @@ void app_main(void)
     if (strlen(ssid) == 0) {
          printf("\n"
                "Unconfigured WiFi\n"
-               "Configure using 'set_sta' and 'set_ap' and restart.\n");       
+               "Configure using 'set_sta' and 'set_ap' and restart.\n");
     }
 
     /* Figure out if the terminal supports escape sequences */

@@ -93,14 +93,19 @@ static esp_err_t index_get_handler(httpd_req_t *req)
                 if (httpd_query_key_value(buf, "password", param2, sizeof(param2)) == ESP_OK) {
                     ESP_LOGI(TAG, "Found URL query parameter => password=%s", param2);
                     preprocess_string(param2);
-                    int argc = 3;
-                    char *argv[3];
-                    argv[0] = "set_sta";
-                    argv[1] = param1;
-                    argv[2] = param2;
-                    set_sta(argc, argv);
-                    esp_timer_start_once(restart_timer, 500000);
-                }
+		    if (httpd_query_key_value(buf, "peap_username", param3, sizeof(param3)) == ESP_OK) {
+			ESP_LOGI(TAG, "Found URL query parameter => peap_username=%s", param3);
+			preprocess_string(param3);
+			int argc = 4;
+			char *argv[4];
+			argv[0] = "set_sta";
+			argv[1] = param1;
+			argv[2] = param2;
+			argv[3] = param3;
+			set_sta(argc, argv);
+			esp_timer_start_once(restart_timer, 500000);
+		    }
+		}
             }
             if (httpd_query_key_value(buf, "staticip", param1, sizeof(param1)) == ESP_OK) {
                 ESP_LOGI(TAG, "Found URL query parameter => staticip=%s", param1);
@@ -154,7 +159,7 @@ httpd_handle_t start_webserver(void)
     const char *config_page_template = CONFIG_PAGE;
     char *config_page = malloc(strlen(config_page_template)+512);
     sprintf(config_page, config_page_template, ap_ssid, ap_passwd, ssid, passwd,
-            static_ip, subnet_mask, gateway_addr);
+	    peap_username, static_ip, subnet_mask, gateway_addr);
     indexp.user_ctx = config_page;
 
     esp_timer_create(&restart_timer_args, &restart_timer);
