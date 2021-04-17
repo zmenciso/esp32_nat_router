@@ -41,6 +41,8 @@
 #include "router_globals.h"
 #include <esp_http_server.h>
 
+#include "certs/digicert_root.h"
+
 /* TODO:
  *  - Modifying the web server html to have a PEAP toggle w/ peap_username
  *  - Get the new form information
@@ -298,10 +300,14 @@ void wifi_init(const char* ssid, const char* passwd, const char* static_ip, cons
 
     if (strlen(peap_username) > 0) {
         printf("PEAP Username given: %s\n", peap_username);
-        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)peap_username, strlen(peap_username)) );
+        // ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)peap_username, strlen(peap_username)) );
         ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_username((uint8_t *)peap_username, strlen(peap_username)) );
         ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_password((uint8_t *)passwd, strlen(passwd)) );
-        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_enable() );
+        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_ca_cert((uint8_t *)test_root_ca, strlen(test_root_ca)) );
+
+        esp_wpa2_config_t config = WPA2_CONFIG_INIT_DEFAULT();          
+
+        ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_enable(&config) );
     }
 
     // Enable DNS (offer) for dhcp server
